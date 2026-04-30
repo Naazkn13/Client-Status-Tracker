@@ -18,11 +18,15 @@ export interface Client {
   updated_at: string | null;
   created_at: string;
   detailed_notes: string;
-  update_history?: Array<{
-    date: string;
-    updatedBy: string;
-    statusColor: StatusColor;
-    statusNote: string;
-    detailedNotes: string;
-  }>;
+}
+
+export interface StatusHistory {
+  id: string;
+  client_id: string;
+  status_color: StatusColor;
+  status_note: string;
+  detailed_notes: string;
+  updated_by: string;
+  status_date: string;
+  created_at: string;
 }

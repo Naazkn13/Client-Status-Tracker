@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef, Fragment } from 'react';
-import { Search, RefreshCw, Filter, ChevronUp, ChevronDown, ChevronRight, Clock, Pencil, FileText, X, UserPlus, Trash } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Search, RefreshCw, Filter, ChevronUp, ChevronDown, Clock, Pencil, FileText, X, UserPlus } from 'lucide-react';
 import { supabase, type Client, type StatusColor } from './lib/supabase';
 import { STATUS_CONFIG } from './components/StatusBadge';
 import EditModal from './components/EditModal';
@@ -79,7 +79,7 @@ function AllStatCard({ count, active, onClick }: { count: number; active: boolea
   return (
     <button
       onClick={onClick}
-      className={`relative w-full text-left rounded-xl border px-5 py-4 flex items-center gap-4 shadow-sm transition-all duration-150 focus:outline-none ${
+      className={`w-full text-left rounded-xl border px-5 py-4 flex items-center gap-4 shadow-sm transition-all duration-150 focus:outline-none ${
         active
           ? 'border-gray-900 ring-2 ring-gray-900 bg-white scale-[1.02]'
           : 'border-gray-200 bg-white hover:border-gray-400 hover:scale-[1.01]'
@@ -90,7 +90,6 @@ function AllStatCard({ count, active, onClick }: { count: number; active: boolea
         <p className="text-2xl font-bold text-gray-900 leading-none">{count}</p>
         <p className="text-xs text-gray-500 mt-0.5 leading-tight">Total clients</p>
       </div>
-      {active && <span className="absolute top-2 right-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200 shadow-sm">Active</span>}
     </button>
   );
 }
@@ -123,7 +122,7 @@ function StatCard({
   return (
     <button
       onClick={onClick}
-      className={`relative w-full text-left rounded-xl border px-5 py-4 flex items-center gap-4 shadow-sm transition-all duration-150 focus:outline-none ${
+      className={`w-full text-left rounded-xl border px-5 py-4 flex items-center gap-4 shadow-sm transition-all duration-150 focus:outline-none ${
         active
           ? 'border-gray-900 ring-2 ring-gray-900 bg-white scale-[1.02]'
           : 'border-gray-200 bg-white hover:border-gray-400 hover:scale-[1.01]'
@@ -134,7 +133,6 @@ function StatCard({
         <p className="text-2xl font-bold text-gray-900 leading-none">{count}</p>
         <p className="text-xs text-gray-500 mt-0.5 leading-tight">{label}</p>
       </div>
-      {active && <span className="absolute top-2 right-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200 shadow-sm">Filtered</span>}
     </button>
   );
 }
@@ -150,17 +148,7 @@ export default function App() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [clientModalTarget, setClientModalTarget] = useState<Client | 'new' | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const tableRef = useRef<HTMLDivElement>(null);
-
-  const toggleRow = (id: string) => {
-    setExpandedRows(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   const fetchClients = async () => {
     setLoading(true);
@@ -207,45 +195,30 @@ export default function App() {
 
   const handleSave = async (
     id: string,
-    updates: { status_color: StatusColor; status_note: string; detailed_notes: string; updated_by: string; updated_at: string }
+    updates: { status_color: StatusColor; status_note: string; detailed_notes: string; updated_by: string; status_date: string }
   ) => {
-    const client = clients.find(c => c.id === id);
-    if (!client) return;
-
-    const newHistoryItem = {
-      date: updates.updated_at,
-      updatedBy: updates.updated_by,
-      statusColor: updates.status_color,
-      statusNote: updates.status_note,
-      detailedNotes: updates.detailed_notes
-    };
-
-    const update_history = [newHistoryItem, ...(client.update_history || [])];
-    const newUpdates = { ...updates, update_history };
-
-    const { error } = await supabase
+    const { status_date, ...clientFields } = updates;
+    const updatedAt = new Date(status_date).toISOString();
+    const { error: updateErr } = await supabase
       .from('clients')
-      .update(newUpdates)
+      .update({ ...clientFields, updated_at: updatedAt })
       .eq('id', id);
-    if (error) throw error;
+    if (updateErr) throw updateErr;
+    const { error: histErr } = await supabase
+      .from('status_history')
+      .insert({ client_id: id, ...clientFields, status_date });
+    if (histErr) throw histErr;
     setClients(prev =>
       prev.map(c =>
-        c.id === id
-          ? { ...c, ...newUpdates }
-          : c
+        c.id === id ? { ...c, ...clientFields, updated_at: updatedAt } : c
       )
     );
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete client "${name}"? This action cannot be undone.`)) {
-      const { error } = await supabase.from('clients').delete().eq('id', id);
-      if (error) {
-        alert('Failed to delete client');
-        return;
-      }
-      setClients(prev => prev.filter(c => c.id !== id));
-    }
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('clients').delete().eq('id', id);
+    if (error) throw error;
+    setClients(prev => prev.filter(c => c.id !== id));
   };
 
   const scrollToTable = () => setTimeout(() => {
@@ -483,114 +456,71 @@ export default function App() {
                   ) : (
                     filtered.map((client, idx) => {
                       const cfg = STATUS_CONFIG[client.status_color];
-                      const isExpanded = expandedRows.has(client.id);
                       return (
-                        <Fragment key={client.id}>
-                          <tr className={`group transition-colors hover:bg-slate-50 ${idx % 2 === 0 ? '' : 'bg-gray-50/40'}`}>
-                            <td className="px-4 py-3 text-gray-400 font-mono text-xs">{client.row_number}</td>
-                            <td className="px-4 py-3">
-                              <button onClick={() => toggleRow(client.id)} className="flex items-center gap-2 text-left focus:outline-none group/btn">
-                                {isExpanded ? <ChevronDown size={16} className="text-gray-400 group-hover/btn:text-gray-900" /> : <ChevronRight size={16} className="text-gray-400 group-hover/btn:text-gray-900" />}
-                                <span className="font-semibold text-gray-900">{client.name}</span>
+                        <tr
+                          key={client.id}
+                          className={`group transition-colors hover:bg-slate-50 ${idx % 2 === 0 ? '' : 'bg-gray-50/40'}`}
+                        >
+                          <td className="px-4 py-3 text-gray-400 font-mono text-xs">{client.row_number}</td>
+                          <td className="px-4 py-3">
+                            <span className="font-semibold text-gray-900">{client.name}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                              {client.industry}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-center">
+                              <span
+                                className={`inline-block w-8 h-8 rounded-lg border-2 ${cfg.bg} ${cfg.border}`}
+                                title={cfg.label}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 max-w-xs">
+                            {client.status_note ? (
+                              <p className="text-gray-700 text-xs leading-relaxed line-clamp-3">{client.status_note}</p>
+                            ) : (
+                              <span className="text-gray-300 text-xs italic">No note</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 max-w-sm">
+                            {client.detailed_notes ? (
+                              <DetailedNotesCell notes={client.detailed_notes} />
+                            ) : (
+                              <span className="text-gray-300 text-xs italic">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {client.updated_by ? (
+                              <span className="text-xs font-medium text-gray-700">{client.updated_by}</span>
+                            ) : (
+                              <span className="text-gray-300 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500">
+                            {formatDate(client.updated_at)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => setClientModalTarget(client)}
+                                className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                title="Edit client name / industry"
+                              >
+                                <UserPlus size={14} />
                               </button>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                                {client.industry}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex justify-center">
-                                <span
-                                  className={`inline-block w-8 h-8 rounded-lg border-2 ${cfg.bg} ${cfg.border}`}
-                                  title={cfg.label}
-                                />
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 max-w-xs">
-                              {client.status_note ? (
-                                <p className="text-gray-700 text-xs leading-relaxed line-clamp-3">{client.status_note}</p>
-                              ) : (
-                                <span className="text-gray-300 text-xs italic">No note</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 max-w-sm">
-                              {client.detailed_notes ? (
-                                <DetailedNotesCell notes={client.detailed_notes} />
-                              ) : (
-                                <span className="text-gray-300 text-xs italic">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3">
-                              {client.updated_by ? (
-                                <span className="text-xs font-medium text-gray-700">{client.updated_by}</span>
-                              ) : (
-                                <span className="text-gray-300 text-xs">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-xs text-gray-500">
-                              {formatDate(client.updated_at)}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => setClientModalTarget(client)}
-                                  className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                                  title="Edit client name / industry"
-                                >
-                                  <UserPlus size={14} />
-                                </button>
-                                <button
-                                  onClick={() => setEditingClient(client)}
-                                  className="p-2 rounded-lg text-gray-400 hover:text-gray-800 hover:bg-gray-100 transition-colors"
-                                  title="Update status"
-                                >
-                                  <Pencil size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(client.id, client.name)}
-                                  className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                  title="Delete client"
-                                >
-                                  <Trash size={14} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                          {isExpanded && (
-                            <tr className="bg-gray-50/80 border-b border-gray-100">
-                              <td colSpan={9} className="px-8 py-4">
-                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Update History</div>
-                                {!client.update_history || client.update_history.length === 0 ? (
-                                  <p className="text-sm text-gray-400 italic">No update history available.</p>
-                                ) : (
-                                  <div className="space-y-3">
-                                    {client.update_history.map((hist, hIdx) => {
-                                      const hCfg = STATUS_CONFIG[hist.statusColor];
-                                      return (
-                                        <div key={hIdx} className="bg-white border border-gray-200 rounded-lg p-4 flex gap-4 shadow-sm">
-                                          <div className="w-32 flex-shrink-0 border-r border-gray-100 pr-4">
-                                            <p className="text-xs font-medium text-gray-900">{formatDate(hist.date)}</p>
-                                            <p className="text-xs text-gray-500 mt-1">{hist.updatedBy}</p>
-                                          </div>
-                                          <div className="flex-1 flex gap-4">
-                                            <div className="flex-shrink-0 flex items-start">
-                                              <span className={`inline-block w-4 h-4 rounded-sm border ${hCfg.bg} ${hCfg.border}`} title={hCfg.label} />
-                                            </div>
-                                            <div className="flex-1">
-                                              {hist.statusNote && <p className="text-sm text-gray-800 font-medium mb-1">{hist.statusNote}</p>}
-                                              {hist.detailedNotes && <p className="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">{hist.detailedNotes}</p>}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
+                              <button
+                                onClick={() => setEditingClient(client)}
+                                className="p-2 rounded-lg text-gray-400 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+                                title="Update status"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                       );
                     })
                   )}
@@ -610,6 +540,7 @@ export default function App() {
         client={editingClient}
         onClose={() => setEditingClient(null)}
         onSave={handleSave}
+        onDelete={handleDelete}
       />
       {clientModalTarget !== null && (
         <ClientModal
