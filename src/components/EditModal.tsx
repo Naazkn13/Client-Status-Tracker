@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Save, User } from 'lucide-react';
+import { X, Save, User, Calendar } from 'lucide-react';
 import type { Client, StatusColor } from '../lib/supabase';
 import { STATUS_CONFIG } from './StatusBadge';
 
@@ -20,7 +20,7 @@ const STAFF_NAMES = [
 interface EditModalProps {
   client: Client | null;
   onClose: () => void;
-  onSave: (id: string, updates: { status_color: StatusColor; status_note: string; detailed_notes: string; updated_by: string }) => Promise<void>;
+  onSave: (id: string, updates: { status_color: StatusColor; status_note: string; detailed_notes: string; updated_by: string; updated_at: string }) => Promise<void>;
 }
 
 export default function EditModal({ client, onClose, onSave }: EditModalProps) {
@@ -28,6 +28,7 @@ export default function EditModal({ client, onClose, onSave }: EditModalProps) {
   const [note, setNote] = useState('');
   const [detailedNotes, setDetailedNotes] = useState('');
   const [updatedBy, setUpdatedBy] = useState('');
+  const [updatedAtDate, setUpdatedAtDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -37,6 +38,7 @@ export default function EditModal({ client, onClose, onSave }: EditModalProps) {
       setNote(client.status_note);
       setDetailedNotes(client.detailed_notes || '');
       setUpdatedBy(client.updated_by || '');
+      setUpdatedAtDate(client.updated_at ? client.updated_at.split('T')[0] : new Date().toISOString().split('T')[0]);
       setError('');
     }
   }, [client]);
@@ -48,10 +50,25 @@ export default function EditModal({ client, onClose, onSave }: EditModalProps) {
       setError('Please select your name before saving.');
       return;
     }
+    if (!updatedAtDate) {
+      setError('Please select a date before saving.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
-      await onSave(client.id, { status_color: statusColor, status_note: note, detailed_notes: detailedNotes, updated_by: updatedBy });
+      // Create a valid ISO string from the selected date (using current time to make it a full timestamp)
+      const dateObj = new Date(updatedAtDate);
+      const now = new Date();
+      dateObj.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+      
+      await onSave(client.id, { 
+        status_color: statusColor, 
+        status_note: note, 
+        detailed_notes: detailedNotes, 
+        updated_by: updatedBy,
+        updated_at: dateObj.toISOString()
+      });
       onClose();
     } catch {
       setError('Failed to save. Please try again.');
@@ -141,24 +158,42 @@ export default function EditModal({ client, onClose, onSave }: EditModalProps) {
             />
           </div>
 
-          {/* Updated By */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              Updated By
-            </label>
-            <div className="relative">
-              <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <select
-                value={updatedBy}
-                onChange={(e) => setUpdatedBy(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white transition"
-              >
-                {STAFF_NAMES.map((name) => (
-                  <option key={name} value={name === 'Select your name…' ? '' : name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+          {/* Updated By & Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                Updated By
+              </label>
+              <div className="relative">
+                <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <select
+                  value={updatedBy}
+                  onChange={(e) => setUpdatedBy(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white transition"
+                >
+                  {STAFF_NAMES.map((name) => (
+                    <option key={name} value={name === 'Select your name…' ? '' : name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                Date
+              </label>
+              <div className="relative">
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="date"
+                  value={updatedAtDate}
+                  onChange={(e) => setUpdatedAtDate(e.target.value)}
+                  required
+                  className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition"
+                />
+              </div>
             </div>
           </div>
 
