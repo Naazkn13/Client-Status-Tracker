@@ -5,6 +5,9 @@ import { supabase, type Client, type StatusColor } from '../lib/supabase';
 import { STATUS_CONFIG } from '../components/StatusBadge';
 import EditModal from '../components/EditModal';
 import ClientModal from '../components/ClientModal';
+import ChangeRequests from '../components/ChangeRequests';
+
+type Tab = 'clients' | 'cr';
 
 const INDUSTRIES = ['All', 'Mutual Fund', 'Capital Markets', 'Insurance', 'NBFC', 'Foreign Banks', 'Bank', 'Rating'];
 
@@ -140,6 +143,7 @@ function StatCard({
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState<Tab>('cr');
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -331,26 +335,55 @@ export default function Dashboard() {
               <LogOut size={14} />
               Sign Out
             </button>
-            <button
-              onClick={() => setClientModalTarget('new')}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <UserPlus size={14} />
-              Add Client
-            </button>
-            <button
-              onClick={fetchClients}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              Refresh
-            </button>
+            {activeTab === 'clients' && (
+              <>
+                <button
+                  onClick={() => setClientModalTarget('new')}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <UserPlus size={14} />
+                  Add Client
+                </button>
+                <button
+                  onClick={fetchClients}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                  Refresh
+                </button>
+              </>
+            )}
           </div>
+        </div>
+        {/* Tabs */}
+        <div className="max-w-screen-2xl mx-auto px-6 flex gap-0 border-t border-gray-100">
+          <button
+            onClick={() => setActiveTab('cr')}
+            className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+              activeTab === 'cr'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'
+            }`}
+          >
+            Change Requests
+          </button>
+          <button
+            onClick={() => setActiveTab('clients')}
+            className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+              activeTab === 'clients'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'
+            }`}
+          >
+            Client Status
+          </button>
         </div>
       </header>
 
       <main className="max-w-screen-2xl mx-auto px-6 py-8 space-y-6">
+        {activeTab === 'cr' && <ChangeRequests />}
+        {activeTab !== 'cr' && (<>
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
           <AllStatCard count={stats.total} active={colorFilter === 'all' && !search && industryFilter === 'All'} onClick={handleAllClick} />
@@ -544,6 +577,7 @@ export default function Dashboard() {
           Status as on {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
           &nbsp;·&nbsp;Any of the 10 team members can update client statuses above.
         </p>
+        </>)}
       </main>
 
       <EditModal

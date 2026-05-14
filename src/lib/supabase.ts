@@ -30,3 +30,22 @@ export interface StatusHistory {
   status_date: string;
   created_at: string;
 }
+
+export interface ChangeRequest {
+  id: string;
+  date: string | null;
+  client: string;
+  cr_description: string;
+  note: string;
+  update_as_on: string;
+  amount: number | null;
+  bucket1_po_received: boolean;
+  bucket2_efforts_not_approved: boolean;
+  date_of_sharing: string | null;
+  final_agreed_cost: number | null;
+  start_date: string | null;
+  uat_date: string | null;
+  go_live_date: string | null;
+  account_manager: string;
+  created_at: string;
+}
