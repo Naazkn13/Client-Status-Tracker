@@ -29,53 +29,59 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen relative flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans overflow-hidden bg-slate-50">
+      {/* Subtle background decorative blobs matching app palette */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-300/20 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-slate-400/20 blur-[120px] pointer-events-none" />
+      
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 tracking-tight">
           Client Status Tracker
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Sign in to your account
+        <p className="mt-2 text-center text-sm text-gray-600 font-medium">
+          Welcome back! Sign in to access your dashboard.
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-200">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="py-8 px-4 sm:px-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-2xl border border-white/60 bg-white/60 backdrop-blur-xl">
           <form className="space-y-6" onSubmit={handleLogin}>
             {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">
+              <div className="bg-red-50/80 backdrop-blur-sm text-red-600 text-sm p-3 rounded-lg border border-red-200 shadow-sm">
                 {error}
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email address</label>
-              <div className="mt-1">
+              <label className="block text-sm font-semibold text-gray-700">Email address</label>
+              <div className="mt-1.5">
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="appearance-none block w-full px-4 py-2.5 bg-white/70 border border-white/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 focus:bg-white transition-all sm:text-sm"
+                  placeholder="name@company.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <div className="mt-1">
+              <label className="block text-sm font-semibold text-gray-700">Password</label>
+              <div className="mt-1.5">
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="appearance-none block w-full px-4 py-2.5 bg-white/70 border border-white/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 focus:bg-white transition-all sm:text-sm"
+                  placeholder="••••••••"
                 />
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="text-sm">
-                <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
+                <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-700 transition-colors">
                   Forgot your password?
                 </Link>
               </div>
@@ -85,7 +91,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-50 transition-colors gap-2 items-center"
+                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-50 transition-all gap-2 items-center"
               >
                 {loading ? 'Signing in...' : <><LogIn size={16} /> Sign in</>}
               </button>
